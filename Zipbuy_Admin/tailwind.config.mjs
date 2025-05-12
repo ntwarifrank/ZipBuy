@@ -21,6 +21,10 @@ export default {
         mainColor: "#E5E7EB",
         viewCoverColor: "#C1C0E514",
       },
+      fontFamily: {
+        inter: ['Inter', 'sans-serif'],
+        poppins: ['Poppins', 'sans-serif'],
+      },
     },
   },
   plugins: [tailwindScrollbar({ nocompatible: true })],

@@ -1,0 +1,16 @@
+.shipping{
+    display: grid;
+    grid-template-columns: 90px 90px 90px;
+    gap: 5px;
+   
+}
+.main-shipping{
+    display: grid;
+    grid-template-columns: 40% 20% 20% 20%;
+}
+.business{
+    display: grid;
+    grid-template-columns: 70px 60px;
+    gap:10px;
+    margin-top: 10px;
+}

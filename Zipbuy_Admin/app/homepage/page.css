@@ -1,0 +1,17 @@
+.homedata {
+    display: grid;
+    grid-template-columns: 15% 20% 22% 28% 15%;
+    gap: 10px;
+    grid-template-rows: repeat(5, minmax(auto));
+}
+@media (max-width: 768px) {
+    .homedata {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+}
+.homedata2{
+    display: grid;
+    grid-template-columns: 50% 50%;
+    gap: 10px;
+}

@@ -1,0 +1,6 @@
+.view-product{
+    width: 98%;
+    display: grid;
+    grid-template-columns: 11% 50% 39%;
+    gap: 10px;
+}

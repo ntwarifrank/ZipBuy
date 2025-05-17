@@ -33,7 +33,7 @@ const Login = () => {
 
     try {
       // Use the login utility function from auth.js
-      const response = axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}//adminlogin`, {email, password}) // true for admin login
+      const response = axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/adminlogin`, {email, password}) // true for admin login
       
       // Redirect to homepage on success
       if(response.status == 201){
@@ -119,7 +119,7 @@ const Login = () => {
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 px-6 bg-alibabaOrange hover:bg-darkGray text-darkGray hover:text-alibabaOrange font-medium rounded-lg transition-all duration-300 flex justify-center items-center shadow-md hover:shadow-lg transform hover:-translate-y-1"
+              className="w-full py-3 cursor-pointer px-6 bg-alibabaOrange hover:bg-darkGray text-darkGray hover:text-alibabaOrange font-medium rounded-lg transition-all duration-300 flex justify-center items-center shadow-md hover:shadow-lg transform hover:-translate-y-1"
               disabled={loading}
             >
               {loading ? (

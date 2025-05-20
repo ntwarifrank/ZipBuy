@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import DashboardLayout from "../../components/DashboardLayout";
+import Link from "next/link";
 
 // Colors matching our dark theme
 const COLORS = {
@@ -24,20 +25,16 @@ const ProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/allproducts`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-        }
-      });
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/allproducts`);
       
       console.log('Product response:', response.data);
       
       // Check if productsData exists in the response
-      if (response.data && response.data.productsData) {
-        setProducts(response.data.productsData);
+      if (response.data && response.data.productData) {
+        setProducts(response.data.productData);
       } else if (Array.isArray(response.data)) {
         // If response.data is directly an array
-        setProducts(response.data);
+        setProducts(response.data.productData);
       } else {
         console.error('Unexpected data format:', response.data);
         setProducts([]);
@@ -164,15 +161,15 @@ const ProductsPage = () => {
                   <tr key={product.id} className="hover:bg-black/20">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="h-14 w-14 rounded-md flex items-center justify-center overflow-hidden" style={{ backgroundColor: COLORS.background }}>
-                        {product.image ? (
+                        {product.productImages ? (
                           <img 
-                            src={product.image} 
-                            alt={product.name}
+                            src={product.productImages[0]} 
+                            alt={product.productName}
                             className="h-full w-full object-cover"
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = `/placeholder.jpg`;
-                              console.log('Image failed to load:', product.image);
+                              console.log('Image failed to load:', product.productImages[0]);
                             }}
                           />
                         ) : (
@@ -183,32 +180,36 @@ const ProductsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div>
-                          <div className="text-sm font-medium" style={{ color: "#ffffff" }}>{product.name}</div>
-                          <div className="text-xs" style={{ color: COLORS.textMuted }}>ID: {product.id}</div>
+                          <div className="text-sm font-medium" style={{ color: "#ffffff" }}>{product.productName.length > 40 ? product.productName.slice(0, 40) + ".." : product.productName}</div>
+                          <div className="text-xs" style={{ color: COLORS.textMuted }}>ID: {product._id}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {product.category}
+                      {product.productCategory}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      ${product.price ? (typeof product.price === 'number' ? product.price.toFixed(2) : product.price) : '0.00'}
+                      ${product.productPrice ? (typeof product.productPrice === 'number' ? product.productPrice.toFixed(2) : product.productPrice) : '0.00'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {product.stock}
+                      {product.productQuantity}
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
                         <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.primary }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <Link href={`/product/edit/${product._id}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
+                          </Link>
                         </button>
                         <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.danger }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Link href={`/product/delete/${product._id}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </Link>
                         </button>
                       </div>
                     </td>

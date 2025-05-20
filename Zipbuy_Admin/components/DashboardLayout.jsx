@@ -82,6 +82,7 @@ const DashboardLayout = ({ children }) => {
     { name: "Products", href: "/products", icon: ProductsIcon },
     { name: "Orders", href: "/orders", icon: OrdersIcon },
     { name: "Customers", href: "/customers", icon: CustomersIcon },
+    { name: "Stock", href: "/stock", icon: ProductsIcon },
     { name: "Settings", href: "/settings", icon: SettingsIcon },
   ];
 

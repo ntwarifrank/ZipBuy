@@ -30,7 +30,8 @@ const CheckStock = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/allproducts`);
-      const productsData = response.data.productsData || [];
+      const productsData = response.data.productData || [];
+      console.log("fetched data" , response.data)
       setProducts(productsData);
       setFilteredProducts(productsData);
     } catch (error) {

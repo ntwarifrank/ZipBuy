@@ -33,7 +33,7 @@ const Login = () => {
 
     try {
       // Use the login utility function from auth.js
-      const response = axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/adminlogin`, {email, password}) // true for admin login
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/adminlogin`, {email, password}) // true for admin login
       
       // Redirect to homepage on success
       if(response.status == 201){

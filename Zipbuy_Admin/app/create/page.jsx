@@ -1,545 +1,293 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { ClipLoader } from "react-spinners";
-import { useEffect } from "react";
-import "./page.css"
+import { Plus, X, ImagePlus, Package, DollarSign, Percent, Layers, FileText, Truck, ImageOff } from "lucide-react";
+import api from "@/lib/api";
 
-const Create = () => {
+const inp = "w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all appearance-none";
+
+export default function CreateProduct() {
   const router = useRouter();
-  const [productImages, setProductImages] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [productName, setProductName] = useState("");
-  const [productPrice, setProductPrice] = useState("");
-  const [productQuantity, setProductQuantity] = useState("");
-  const [productDiscount, setProductDiscount] = useState("");
-  const [productCategory, setProductCategory] = useState("");
-  const [productDescription, setProductDescription] = useState("");
-  const [productShipping, setProductShipping] = useState([]);
-  const [errorMeesage, setErrorMessage] = useState([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [discount, setDiscount] = useState("0");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [images, setImages] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [businessDayFrom, setBusinessDayFrom] = useState(1);
-  const [bussinessDayTo, setBussinessDayTo] = useState(7);
+  const [error, setError] = useState("");
+  const [keepBg, setKeepBg] = useState(false);
+  const [shippingWeight, setShippingWeight] = useState("");
   const [shippingCost, setShippingCost] = useState("");
-  const [height, setHeight] = useState(0);
-  const [width, setWidth] = useState(0);
-  const [length, setLength] = useState(0);
-  const [weight, setWeight] = useState("");
-  const [noDataProductName, setNoDataProductName] = useState(false);
-  const [noDataProductPrice, setNoDataProductPrice] = useState(false);
-  const [noDataProductQuantity, setNoDataProductQuantity] = useState(false);
-  const [noDataProductDiscount, setNoDataProductDiscount] = useState(false);
-  const [noDataProductCategory, setNoDataProductCategory] = useState(false);
-  const [noDataProductDescription, setNoDataProductProductDescription] = useState(false);
-  const [noDataProductImages, setNoDataProductImages] = useState(false);
-  const [noDataProductShipping, setNoDataProductshipping] = useState(false);
-  // console.log(images, productName, productPrice, productDescription, productQuantity, productCategory)
+  const [shippingDelivery, setShippingDelivery] = useState("");
+  const fileInputRef = useRef(null);
+  const dragCounter = useRef(0);
+  const [dragOver, setDragOver] = useState(false);
 
-  // Handle Image Upload
-  const handleImageUpload = (event) => {
-    const files = Array.from(event.target.files);
-     setFiles((prev) => [...prev, ...files]);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setProductImages((prev) => [...prev, ...imageUrls]);
+  const CATEGORIES = [
+    "Electronics & Gadgets", "Fashion & Apparel", "Home & Living",
+    "Food & Beverages", "Health & Beauty", "Automotive & Parts",
+    "Agriculture & Farming", "Office & School Supplies", "Sports & Outdoors",
+    "Industrial & Manufacturing", "Construction & Real Estate",
+  ];
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setImages(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Handle Image Drop
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
-     setFiles((prev) => [...prev, ...files]);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setProductImages((prev) => [...prev, ...imageUrls]);
-  };
-
-  // Remove Image
- const removeImage = (index, event) => {
-   event.preventDefault();
-   setProductImages((prev) => prev.filter((_, i) => i !== index)); // Correctly update state without mutation
- };
-
- useEffect(() => {
-   if (weight <= 0) setWeight(0);
-   if (businessDayFrom <= 0) setBusinessDayFrom(1);
-   if (businessDayFrom > 7) setBusinessDayFrom(1);
-   if (bussinessDayTo <= 0) setBussinessDayTo(1);
-   if (bussinessDayTo > 7) setBussinessDayTo(1);
-   if (shippingCost <= 0) setShippingCost(0);
-   
- }, [weight, businessDayFrom, bussinessDayTo, shippingCost]);
-
-console.log(weight,businessDayFrom,bussinessDayTo,shippingCost)
-
-
- async function handleSubmit(e){
+  const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    setImages(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (i) => {
+    setPreviews(prev => prev.filter((_, idx) => idx !== i));
+    setImages(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name || !price || !quantity || !category || !description) {
+      setError("All required fields must be filled");
+      return;
+    }
+    if (images.length === 0) {
+      setError("At least one product image is required");
+      return;
+    }
     setLoading(true);
-
-    const dimensions = height + "x" + width + "x" + length;
-    const estimatedDelivery = businessDayFrom + " - " + bussinessDayTo;
-
-    productShipping.push(
-      {weight},
-      {dimensions: dimensions},
-      {shippingCost},
-      {estimatedDelivery: estimatedDelivery}
-    );
+    setError("");
 
     try {
-      if(productName.length <= 0){
-        setNoDataProductName(true);
-        setLoading(false);
-      }else{
-         setNoDataProductName(false);
-      }
-      if (productPrice.length <= 0) {
-        setNoDataProductPrice(true);
-        setLoading(false);
-      }else{
-        setNoDataProductPrice(false);
-      }
-
-      if (productQuantity.length <= 0) {
-        setNoDataProductQuantity(true);
-        setLoading(false);
-      }else{
-        setNoDataProductQuantity(false);
-      }
-      if (productCategory.length <= 0) {
-        setNoDataProductCategory(true);
-        setLoading(false);
-      }else{
-        setNoDataProductCategory(false);
-      }
-      if (productDescription.length <= 0) {
-        setNoDataProductProductDescription(true);
-        setLoading(false);
-      }else{
-        setNoDataProductProductDescription(false);
-      }
-       if (productImages.length <= 0) {
-        setLoading(false);
-         setNoDataProductImages(true);
-       }else{
-        setNoDataProductImages(false);
-       }
-       if (productDiscount.length <= 0) {
-         setNoDataProductDiscount(true);
-         setLoading(false);
-         return;
-       } else {
-         setNoDataProductDiscount(false);
-       }
-       if (productDiscount < 0 || productDiscount > 99) {
-         setNoDataProductDiscount(true);
-         setLoading(false)
-         return;
-       } else {
-         setNoDataProductDiscount(false);
-       }
-
-       
-    if(productImages.length > 0){  
-      
       const formData = new FormData();
-      formData.append("productName", productName);
-      formData.append("productPrice", productPrice);
-      formData.append("productQuantity", productQuantity);
-      formData.append("productCategory", productCategory);
-      formData.append("productDiscount", productDiscount);
-      formData.append("productDescription", productDescription);
-      formData.append("productShipping", JSON.stringify(productShipping));
+      formData.append("productName", name);
+      formData.append("productPrice", price);
+      formData.append("productQuantity", quantity);
+      formData.append("productDiscount", discount || "0");
+      formData.append("productCategory", category);
+      formData.append("productDescription", description);
+      formData.append("keepBackground", keepBg ? "true" : "false");
 
-     
-      files.forEach((file) => {
-        formData.append("images", file);
-      });
-      
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/createproduct`, formData,{
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        )
-        .then((res) => {
-          if (res.status == 200) {
-            router.push("/allproduct");
-            setLoading(false);
-          }
-        });
-        
-    }else{
-      setLoading(false);
-      setErrorMessage("All Field Are Required")
-    }
-    } catch (error) {
-      setErrorMessage(error.response.data.message);
-      setLoading(false);
-          
-    }
-     setLoading(false);
- }
+      const shippingArr = [
+        { weight: shippingWeight || "N/A" },
+        { shippingCost: Number(shippingCost) || 0 },
+        { estimatedDelivery: shippingDelivery || "N/A" },
+      ];
+      formData.append("productShipping", JSON.stringify(shippingArr));
 
+      images.forEach((file) => formData.append("images", file));
+
+      const { status } = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/createproduct`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      if (status === 200) router.push("/products");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to create product");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div>
-      <DashboardLayout>
-        <div className="flex flex-col gap-4 ">
-          <div className="w-full py-3 px-2 bg-blue-950 text-white text-xl font-bold rounded-t-lg">
-            Create Product
-          </div>
-
-          <div className="w-[90%] min-h-fit h-fit p-4 bg-white shadow-md rounded-lg text-gray-700">
-            {errorMeesage && errorMeesage.length > 0 ? (
-              <p className="text-red-500">{errorMeesage}</p>
-            ) : (
-              ""
-            )}
-            <form className="grid grid-cols-2 gap-4" onSubmit={handleSubmit}>
-              {/* Product Name */}
-              <div className="flex flex-col">
-                <label htmlFor="productName" className="text-xs font-semibold">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  value={productName}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                  }}
-                  id="productName"
-                  className={
-                    noDataProductName
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
-              </div>
-
-              {/* Price */}
-              <div className="flex flex-col">
-                <label htmlFor="price" className="text-xs font-semibold">
-                  Price ($)
-                </label>
-                <input
-                  type="number"
-                  value={productPrice}
-                  onChange={(e) => {
-                    setProductPrice(e.target.value);
-                  }}
-                  id="price"
-                  className={
-                    noDataProductPrice
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
-              </div>
-
-              {/* Stock Quantity */}
-              <div className="flex flex-col">
-                <label htmlFor="stock" className="text-xs font-semibold">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  value={productQuantity}
-                  onChange={(e) => {
-                    setProductQuantity(e.target.value);
-                  }}
-                  id="stock"
-                  className={
-                    noDataProductQuantity
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
-              </div>
-
-              {/* Discount */}
-              <div className="flex flex-col">
-                <label htmlFor="stock" className="text-xs font-semibold">
-                  Discount
-                </label>
-                {noDataProductDiscount && (
-                  <p className="text-red-500">
-                    Discount must be between 0 and 99.
-                  </p>
-                )}
-
-                <input
-                  type="number"
-                  value={productDiscount}
-                  onChange={(e) => {
-                    setProductDiscount(e.target.value);
-                  }}
-                  id="stock"
-                  className={
-                    noDataProductDiscount
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
-              </div>
-
-              {/* Category */}
-              <div className="flex flex-col">
-                <label htmlFor="category" className="text-xs font-semibold">
-                  Category
-                </label>
-                <select
-                  id="category"
-                  className={
-                    noDataProductCategory
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                  value={productCategory}
-                  onChange={(e) => {
-                    setProductCategory(e.target.value);
-                  }}
-                >
-                  <option value="None">Category</option>
-                  <option value="electronics">Electronics</option>
-                  <option value="fashion">Fashion</option>
-                  <option value="home&living">Home & Living</option>
-                  <option value="sports">Sports</option>
-                  <option value="beauty">Beauty</option>
-                  <option value="vehicles">Vehicles</option>
-                  <option value="pents">Pents</option>
-                  <option value="shirts">Shirts</option>
-                  <option value="watch">Watch</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="laptops">Laptops</option>
-                  <option value="tablets">Tablets</option>
-                  <option value="phones">Phones</option>
-                  <option value="cameras">Cameras</option>
-                  <option value="headphones">Headphones</option>
-                  <option value="speakers">Speakers</option>
-                  <option value="televisions">Televisions</option>
-                  <option value="furniture">Furniture</option>
-                  <option value="shoes">Shoes</option>
-                  <option value="bags">Bags</option>
-                  <option value="jewelry">Jewelry</option>
-                  <option value="cosmetics">Cosmetics</option>
-                  <option value="books">Books</option>
-                  <option value="games">Games</option>
-                  <option value="toys">Toys</option>
-                  <option value="sports-equipment">Sports</option>
-                  <option value="outdoor">Outdoor</option>
-                  <option value="groceries">Groceries</option>
-                </select>
-              </div>
-
-              {/* product Shipping */}
-              <div className="flex flex-col col-span-2">
-                <label htmlFor="productName" className="text-xs font-semibold">
-                  Shipping
-                </label>
-                <div className="main-shipping pb-2">
-                  <div className="flex flex-col">
-                    <label htmlFor="size" className="text-xs">
-                      Dimensions
-                    </label>
-                    <div className="shipping">
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setHeight(e.target.value);
-                        }}
-                        placeholder="Height"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setWidth(e.target.value);
-                        }}
-                        placeholder="Width"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setLength(e.target.value);
-                        }}
-                        placeholder="Length"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-1">
-                    <label htmlFor="kilograms">Weight (Kg)</label>
-                    <input
-                      type="number"
-                      onChange={(e) => {
-                        setWeight(e.target.value);
-                      }}
-                      id="productName"
-                      className={
-                        noDataProductShipping
-                          ? "border border-red-600 rounded-md p-2 outline-none shadow-sm w-[100px]"
-                          : "border rounded-md p-2 outline-none shadow-sm w-[100px]"
-                      }
-                    />
-                  </div>
-                  <div className="mt-1">
-                    <label htmlFor="kilograms">Shipping Cost ($)</label>
-                    <input
-                      type="number"
-                      onChange={(e) => {
-                        setShippingCost(e.target.value);
-                      }}
-                      id="productName"
-                      className={
-                        noDataProductShipping
-                          ? "border border-red-600 rounded-md p-2 outline-none shadow-sm w-[100px]"
-                          : "border rounded-md p-2 outline-none shadow-sm w-[100px]"
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="kilograms">Business Day's</label>
-                    <div className="business">
-                      <input
-                        type="number"
-                        value={businessDayFrom}
-                        onChange={(e) => {
-                          setBusinessDayFrom(e.target.value);
-                        }}
-                        placeholder="From"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        value={bussinessDayTo}
-                        onChange={(e) => {
-                          setBussinessDayTo(e.target.value);
-                        }}
-                        placeholder="To"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Image Upload */}
-              <div className="col-span-2">
-                <label className="text-xs font-semibold">
-                  Upload Product Images
-                </label>
-                <div
-                  className={
-                    noDataProductImages
-                      ? "w-full h-32 border-2 border-dashed border-red-600 rounded-lg flex flex-col justify-center items-center cursor-pointer bg-gray-100"
-                      : "w-full h-32 border-2 border-dashed border-gray-400 rounded-lg flex flex-col justify-center items-center cursor-pointer bg-gray-100"
-                  }
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                >
-                  <p className="text-gray-600">Drag & Drop Images Here</p>
-                  <p className="text-gray-500">or</p>
-                  <label
-                    htmlFor="image"
-                    className="bg-blue-700 text-white px-3 py-1 rounded-md cursor-pointer hover:bg-blue-800"
-                  >
-                    Select Files
-                  </label>
-                  <input
-                    type="file"
-                    id="image"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                </div>
-              </div>
-
-              {/* Image Preview with Remove Option */}
-              {productImages.length > 0 && (
-                <div className="col-span-2 flex flex-wrap gap-2 p-2 bg-gray-50 rounded-md shadow-inner">
-                  {productImages.map((src, index) => (
-                    <div key={index} className="relative w-24 h-24">
-                      <img
-                        src={src}
-                        alt="Preview"
-                        className="w-full h-full object-cover rounded-md border shadow-sm"
-                      />
-                      {/* Remove Button */}
-                      <button
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white text-sm text-center rounded-full"
-                        onClick={(e) => removeImage(index, e)}
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Description */}
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="description" className="text-xs font-semibold">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  value={productDescription}
-                  onChange={(e) => {
-                    setProductDescription(e.target.value);
-                  }}
-                  rows="3"
-                  className={
-                    noDataProductDescription
-                      ? "border rounded-md border-red-600 p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                ></textarea>
-              </div>
-
-              {/* Submit Button */}
-              <div className="col-span-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-blue-950 text-white py-2 px-4 rounded-md hover:bg-blue-800 transition"
-                >
-                  {loading ? (
-                    <ClipLoader color="rgb(255,255,255)" size={20} />
-                  ) : (
-                    "Create product"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto space-y-5">
+        <div>
+          <h2 className="text-lg font-bold text-[#0D0D0D]">Create Product</h2>
+          <p className="text-sm text-gray-400">Add a new product to the marketplace.</p>
         </div>
-      </DashboardLayout>
-    </div>
-  );
-};
 
-export default Create;
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Basic Info */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <Package size={14} className="text-[#FFC831]" /> Basic Information
+            </h3>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Product Name</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Enter product name" className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Description</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your product..." rows={3}
+                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all resize-none" />
+            </div>
+          </div>
+
+          {/* Pricing & Stock */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <DollarSign size={14} className="text-[#FFC831]" /> Pricing & Stock
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Price (FRw)</label>
+                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0" className={inp} min="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="0" className={inp} min="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Discount (%)</label>
+                <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="0" className={inp} min="0" max="99" />
+              </div>
+            </div>
+          </div>
+
+          {/* Shipping */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <Truck size={14} className="text-[#FFC831]" /> Shipping Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Weight</label>
+                <input type="text" value={shippingWeight} onChange={(e) => setShippingWeight(e.target.value)}
+                  placeholder="e.g. 2 kg" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Shipping Cost (FRw)</label>
+                <input type="number" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)}
+                  placeholder="0" className={inp} min="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Estimated Delivery</label>
+                <input type="text" value={shippingDelivery} onChange={(e) => setShippingDelivery(e.target.value)}
+                  placeholder="e.g. 3-5 days" className={inp} />
+              </div>
+            </div>
+          </div>
+
+          {/* Category */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <Layers size={14} className="text-[#FFC831]" /> Category
+            </h3>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inp}>
+              <option value="">Select a category</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* Images */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <ImagePlus size={14} className="text-[#FFC831]" /> Product Images
+            </h3>
+            <div
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
+                dragOver ? "border-[#FFC831] bg-[#FFC831]/5" : "border-gray-100 hover:border-[#FFC831]/30"
+              }`}
+            >
+              <ImagePlus size={28} className="mx-auto text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">Drag & drop images here, or click to browse</p>
+              <input ref={fileInputRef} id="image-upload" type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </div>
+
+            {previews.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {previews.map((src, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-100 group">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removeImage(i)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Keep background toggle */}
+            <label className="flex items-center gap-2.5 pt-1 cursor-pointer group">
+              <div className="relative">
+                <input type="checkbox" checked={keepBg} onChange={(e) => setKeepBg(e.target.checked)} className="sr-only peer" />
+                <div className="w-9 h-5 rounded-full bg-gray-200 peer-checked:bg-[#FFC831] transition-colors" />
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${keepBg ? "translate-x-4" : ""}`} />
+              </div>
+              <span className="text-xs font-medium text-gray-500 group-hover:text-gray-700 transition-colors flex items-center gap-1.5">
+                <ImageOff size={12} /> Keep original image backgrounds (skip background removal)
+              </span>
+            </label>
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => router.push("/products")}
+              className="px-5 py-2.5 text-sm font-semibold rounded-xl border border-gray-100 text-gray-500 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="px-6 py-2.5 bg-[#FFC831] text-[#0D0D0D] text-sm font-bold rounded-xl hover:bg-[#FFD454] disabled:opacity-50 transition-all shadow-sm flex items-center gap-2">
+              {loading ? (
+                <><span className="w-4 h-4 border-2 border-[#0D0D0D]/20 border-t-[#0D0D0D] rounded-full animate-spin" /> Creating...</>
+              ) : (
+                <><Plus size={14} /> Create Product</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </DashboardLayout>
+  );
+}

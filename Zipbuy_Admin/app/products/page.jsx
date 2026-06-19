@@ -1,245 +1,268 @@
 "use client";
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import api from "../../lib/api";
 import Link from "next/link";
+import {
+  Package, Search, Plus, RefreshCw, Edit3, Trash2, X,
+  ChevronLeft, ChevronRight, ImageOff, ToggleRight, ToggleLeft,
+  Eye, Tag, AlertCircle,
+} from "lucide-react";
 
-// Colors matching our dark theme
-const COLORS = {
-  primary: "#2563eb", // Blue
-  secondary: "#1e293b", // Slate-800
-  background: "#0f172a", // Slate-900
-  text: "#f8fafc", // Slate-50
-  textMuted: "#94a3b8", // Slate-400
-  border: "#334155", // Slate-700
-  success: "#10b981", // Emerald-500
-  danger: "#ef4444", // Red-500
-  warning: "#f59e0b", // Amber-500
-};
-
-const ProductsPage = () => {
+export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch products from backend
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/allproducts`);
-      
-      console.log('Product response:', response.data);
-      
-      // Check if productsData exists in the response
-      if (response.data && response.data.productData) {
-        setProducts(response.data.productData);
-      } else if (Array.isArray(response.data)) {
-        // If response.data is directly an array
-        setProducts(response.data.productData);
-      } else {
-        console.error('Unexpected data format:', response.data);
-        setProducts([]);
+      const params = new URLSearchParams({ page, limit: "15" });
+      if (search) params.set("search", search);
+      const { data } = await api.get(`/api/admin/products?${params}`);
+      if (data.success) {
+        setProducts(data.products);
+        setTotalPages(data.pagination.pages);
+        setTotal(data.pagination.total);
       }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setProducts([]);
-      // Show a more user-friendly error message
-      alert(error.response?.data?.message || 'Failed to fetch products. Please try again later.');
+    } catch (err) {
+      console.error("Fetch products error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search]);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
- 
+  async function handleToggleStatus(id) {
+    try {
+      await api.put(`/api/admin/products/${id}/toggle-status`);
+      fetchProducts();
+    } catch (err) { console.error("Toggle error:", err); }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/admin/products/${deleteTarget}`);
+      setDeleteTarget(null);
+      fetchProducts();
+    } catch (err) { console.error("Delete error:", err); }
+    finally { setDeleting(false); }
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header with actions */}
-        <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center rounded-xl p-6 shadow-md" style={{ backgroundColor: COLORS.secondary, borderBottom: `1px solid ${COLORS.border}` }}>
-          <div>
-            <h1 className="text-xl font-semibold" style={{ color: COLORS.text }}>Products</h1>
-            <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>
-              Manage your product inventory
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search products..."
-                className="px-4 py-2 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                style={{ 
-                  backgroundColor: COLORS.background, 
-                  color: COLORS.text,
-                  borderColor: COLORS.border,
-                  focusRing: COLORS.primary
-                }}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3" style={{ color: COLORS.textMuted }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-            
-            <button 
-              onClick={fetchProducts}
-              className="px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center mr-2" 
-              style={{ 
-                backgroundColor: COLORS.background,
-                color: COLORS.text
-              }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
-            
-            <button className="px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center" 
-              style={{ 
-                backgroundColor: COLORS.primary,
-                color: COLORS.text
-              }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Product
-            </button>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-[#0D0D0D] tracking-tight">Products</h2>
+          <p className="text-sm text-gray-400 mt-0.5">{total} products across the marketplace</p>
         </div>
-
-        {/* Products Table */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: COLORS.primary }}></div>
-            <span className="ml-3 text-white">Loading products...</span>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+            <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search products..."
+              className="w-full sm:w-56 bg-white border border-gray-100/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all"
+            />
           </div>
-        ) : products.length === 0 ? (
-          <div className="bg-black/25 p-4 rounded-lg text-center">
-            <p className="text-white text-lg">No products found</p>
-            <button 
-              onClick={fetchProducts}
-              className="mt-4 px-4 py-2 rounded" 
-              style={{ backgroundColor: COLORS.primary, color: 'white' }}
-            >
-              Refresh Products
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-            <table className="min-w-full divide-y" style={{ borderColor: COLORS.border }}>
-              <thead>
-                <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Image
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Product
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Category
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Price
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Stock
-                  </th>
-
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: COLORS.border }}>
-                {products.map((product) => (
-                  <tr key={product.id} className="hover:bg-black/20">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="h-14 w-14 rounded-md flex items-center justify-center overflow-hidden" style={{ backgroundColor: COLORS.background }}>
-                        {product.productImages ? (
-                          <img 
-                            src={product.productImages[0]} 
-                            alt={product.productName}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `/placeholder.jpg`;
-                              console.log('Image failed to load:', product.productImages[0]);
-                            }}
-                          />
-                        ) : (
-                          <span className="text-lg font-bold" style={{ color: COLORS.primary }}>{product.name ? product.name.substring(0, 2).toUpperCase() : 'PR'}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div>
-                          <div className="text-sm font-medium" style={{ color: "#ffffff" }}>{product.productName.length > 40 ? product.productName.slice(0, 40) + ".." : product.productName}</div>
-                          <div className="text-xs" style={{ color: COLORS.textMuted }}>ID: {product._id}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {product.productCategory}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      ${product.productPrice ? (typeof product.productPrice === 'number' ? product.productPrice.toFixed(2) : product.productPrice) : '0.00'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: "#ffffff" }}>
-                      {product.productQuantity}
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.primary }}>
-                          <Link href={`/product/edit/${product._id}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          </Link>
-                        </button>
-                        <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.danger }}>
-                          <Link href={`/product/delete/${product._id}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </Link>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center px-6 py-3 rounded-xl shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-          <div className="text-sm" style={{ color: COLORS.textMuted }}>
-            Showing <span style={{ color: COLORS.text }}>1</span> to <span style={{ color: COLORS.text }}>8</span> of <span style={{ color: COLORS.text }}>8</span> results
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.background, color: COLORS.textMuted }}>
-              Previous
-            </button>
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.primary, color: COLORS.text }}>
-              1
-            </button>
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.background, color: COLORS.textMuted }}>
-              Next
-            </button>
-          </div>
+          <button onClick={fetchProducts} className="p-2.5 rounded-xl bg-white border border-gray-100/80 hover:bg-gray-50 transition-all text-gray-400 hover:text-gray-600" title="Refresh">
+            <RefreshCw size={15} />
+          </button>
+          <Link href="/create"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FFC831] text-[#0D0D0D] text-sm font-bold rounded-xl hover:bg-[#FFD454] hover:shadow-md active:scale-[0.98] transition-all">
+            <Plus size={15} /> Add Product
+          </Link>
         </div>
       </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100/80 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-[#0D0D0D]/10 border-t-[#FFC831] rounded-full animate-spin" />
+          </div>
+        ) : products.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Package size={28} className="text-gray-200" />
+            </div>
+            <p className="text-sm font-semibold text-gray-400">No products found</p>
+            <p className="text-xs text-gray-300 mt-1">{search ? "Try a different search term" : "Products will appear here once businesses add them"}</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Product</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Business</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Category</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Price</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Stock</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Status</th>
+                    <th className="px-5 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {products.map((p) => {
+                    const discounted = p.productDiscount > 0
+                      ? Math.round(p.productPrice - (p.productPrice / 100) * p.productDiscount)
+                      : null;
+                    return (
+                      <tr key={p._id} className="hover:bg-gray-50/60 transition-colors group">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                              {p.productImages?.[0] ? (
+                                <img src={p.productImages[0]} alt={p.productName} className="w-full h-full object-cover" />
+                              ) : (
+                                <ImageOff size={16} className="text-gray-300" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[#0D0D0D] truncate max-w-[200px]">{p.productName}</p>
+                              <p className="text-[10px] text-gray-400 font-mono">#{p._id?.slice(-8)}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-gray-500 hidden md:table-cell max-w-[130px] truncate">
+                          {p.business?.businessProfile?.businessName || p.business?.email || <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5 hidden lg:table-cell">
+                          <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100/50">
+                            {p.productCategory || "—"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div>
+                            <p className="text-sm font-bold text-[#0D0D0D]">
+                              FRw {(p.productPrice || 0).toLocaleString()}
+                            </p>
+                            {discounted && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] line-through text-gray-400">
+                                  FRw {(p.productPrice || 0).toLocaleString()}
+                                </span>
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1 rounded">-{p.productDiscount}%</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-bold ${(p.productQuantity || 0) > 10 ? 'text-green-600' : (p.productQuantity || 0) > 0 ? 'text-amber-600' : 'text-red-400'}`}>
+                              {p.productQuantity || 0}
+                            </span>
+                            {(p.productQuantity || 0) <= 5 && (
+                              <AlertCircle size={11} className="text-amber-400" />
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 hidden sm:table-cell">
+                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                            p.productStatus !== "inactive" ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50" : "bg-gray-50 text-gray-500 border border-gray-100"
+                          }`}>
+                            {p.productStatus || "active"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => handleToggleStatus(p._id)}
+                              className="p-2 rounded-xl hover:bg-gray-100/80 transition-all opacity-0 group-hover:opacity-100 lg:opacity-100"
+                              title={p.productStatus === "inactive" ? "Activate" : "Deactivate"}>
+                              {p.productStatus !== "inactive"
+                                ? <ToggleRight size={15} className="text-emerald-500" />
+                                : <ToggleLeft size={15} className="text-gray-400" />
+                              }
+                            </button>
+                            <Link href={`/product/${p._id}`}
+                              className="p-2 rounded-xl hover:bg-gray-100/80 transition-all opacity-0 group-hover:opacity-100 lg:opacity-100">
+                              <Eye size={14} className="text-gray-400" />
+                            </Link>
+                            <Link href={`/product/edit/${p._id}`}
+                              className="p-2 rounded-xl hover:bg-gray-100/80 transition-all opacity-0 group-hover:opacity-100 lg:opacity-100">
+                              <Edit3 size={14} className="text-gray-400" />
+                            </Link>
+                            <button onClick={() => setDeleteTarget(p._id)}
+                              className="p-2 rounded-xl hover:bg-red-50 transition-all">
+                              <Trash2 size={14} className="text-red-400" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-50">
+              <p className="text-xs text-gray-400">
+                Page <span className="font-semibold text-gray-600">{page}</span> of <span className="font-semibold text-gray-600">{totalPages}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                  className="p-2 rounded-xl bg-white border border-gray-100/80 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  <ChevronLeft size={14} className="text-gray-500" />
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button key={p} onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                        p === page
+                          ? "bg-[#FFC831] text-[#0D0D0D] shadow-sm"
+                          : "bg-white border border-gray-100/80 text-gray-500 hover:bg-gray-50"
+                      }`}>
+                      {p}
+                    </button>
+                  );
+                })}
+                <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+                  className="p-2 rounded-xl bg-white border border-gray-100/80 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  <ChevronRight size={14} className="text-gray-500" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 z-10 animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h3 className="text-base font-bold text-[#0D0D0D] mb-1">Delete Product</h3>
+              <p className="text-sm text-gray-500 mb-6">Are you sure? This cannot be undone.</p>
+              <div className="flex gap-2.5">
+                <button onClick={() => setDeleteTarget(null)}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-gray-100 text-gray-500 hover:bg-gray-50 transition-all">
+                  Cancel
+                </button>
+                <button onClick={handleDelete} disabled={deleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-red-500 to-red-400 text-white hover:shadow-md disabled:opacity-50 transition-all">
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
-};
-
-export default ProductsPage;
+}

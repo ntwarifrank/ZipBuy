@@ -25,18 +25,6 @@ header, footer {
   color: var(--white);
 }
 
-/* Buttons */
-button {
-  background-color: var(--alibaba-orange);
-  color: var(--dark-gray);
-  transition: all 0.3s ease;
-}
-
-button:hover {
-  background-color: var(--dark-gray);
-  color: var(--alibaba-orange);
-}
-
 /* Common Card Styles */
 .admin-card {
   background-color: white;

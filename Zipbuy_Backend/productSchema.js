@@ -10,6 +10,11 @@ const productSchemaDesign = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    currency: {
+      type: String,
+      enum: ["RWF", "USD"],
+      default: "RWF",
+    },
     productShipping: {
       type: Array,
       required: true,
@@ -18,9 +23,9 @@ const productSchemaDesign = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    productDiscount:{
-      type:Number,
-      required:true,
+    productDiscount: {
+      type: Number,
+      required: true,
     },
     productCategory: {
       type: String,
@@ -33,6 +38,15 @@ const productSchemaDesign = new mongoose.Schema(
     productImages: {
       type: Array,
       required: true,
+    },
+    productStatus: {
+      type: String,
+      enum: ["active", "inactive", "out_of_stock", "discontinued"],
+      default: "active",
+    },
+    business: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   {

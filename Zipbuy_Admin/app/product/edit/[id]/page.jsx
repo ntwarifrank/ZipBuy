@@ -1,498 +1,300 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import axios from "axios";
-import { useRouter } from "next/navigation";
-import { ClipLoader } from "react-spinners";
-import { useEffect } from "react";
-import "./page.css";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { Save, X, ImagePlus, Package, DollarSign, Percent, Layers, FileText } from "lucide-react";
+import api from "@/lib/api";
 
-const Create = () => {
-const { id } = useParams();
-const [productData, setProductData] = useState([]);
+const inp = "w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all";
 
-async function fectProductData() {
-  try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${id}`);
-    if (response) {
-      setProductData(response.data.product);
-    }
-  } catch (error) {
-    console.log(error);
-  }
-}
-useEffect(() => {
-  fectProductData();
-}, [id]);
-
+export default function EditProduct() {
   const router = useRouter();
-  const [productImages, setProductImages] = useState([]);
-  const [productName, setProductName] = useState("");
-  const [productPrice, setProductPrice] = useState("");
-  const [productQuantity, setProductQuantity] = useState("");
-  const [productCategory, setProductCategory] = useState("");
-  const [productDescription, setProductDescription] = useState("");
-  const [productShipping, setProductShipping] = useState([]);
-  const [errorMeesage, setErrorMessage] = useState([]);
+  const { id } = useParams();
   const [loading, setLoading] = useState(false);
-  const [businessDayFrom, setBusinessDayFrom] = useState(1);
-  const [bussinessDayTo, setBussinessDayTo] = useState(7);
-  const [shippingCost, setShippingCost] = useState("");
-  const [height, setHeight] = useState(0);
-  const [width, setWidth] = useState(0);
-  const [length, setLength] = useState(0);
-  const [weight, setWeight] = useState("");
-  const [noDataProductName, setNoDataProductName] = useState(false);
-  const [noDataProductPrice, setNoDataProductPrice] = useState(false);
-  const [noDataProductQuantity, setNoDataProductQuantity] = useState(false);
-  const [noDataProductCategory, setNoDataProductCategory] = useState(false);
-  const [noDataProductDescription, setNoDataProductProductDescription] =
-    useState(false);
-  const [noDataProductImages, setNoDataProductImages] = useState(false);
-  const [noDataProductShipping, setNoDataProductshipping] = useState(false);
-  // console.log(images, productName, productPrice, productDescription, productQuantity, productCategory)
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
 
-  // Handle Image Upload
-  const handleImageUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setProductImages((prev) => [...prev, ...imageUrls]);
-  };
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [discount, setDiscount] = useState("0");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
+  const fileInputRef = useRef(null);
+  const dragCounter = useRef(0);
+  const [dragOver, setDragOver] = useState(false);
 
-  // Handle Image Drop (Drag & Drop)
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    console.log(imageUrls);
-    setProductImages((prev) => [...prev, ...imageUrls]);
-  };
-
-  // Remove Image
-  const removeImage = (index, event) => {
-    event.preventDefault();
-    setProductImages((prev) => prev.filter((_, i) => i !== index)); // Correctly update state without mutation
-  };
+  const CATEGORIES = [
+    "Electronics & Gadgets", "Fashion & Apparel", "Home & Living",
+    "Food & Beverages", "Health & Beauty", "Automotive & Parts",
+    "Agriculture & Farming", "Office & School Supplies", "Sports & Outdoors",
+    "Industrial & Manufacturing", "Construction & Real Estate",
+  ];
 
   useEffect(() => {
-    if (weight <= 0) setWeight(0);
-    if (businessDayFrom <= 0) setBusinessDayFrom(1);
-    if (businessDayFrom > 7) setBusinessDayFrom(1);
-    if (bussinessDayTo <= 0) setBussinessDayTo(1);
-    if (bussinessDayTo > 7) setBussinessDayTo(1);
-    if (shippingCost <= 0) setShippingCost(0);
-  }, [weight, businessDayFrom, bussinessDayTo, shippingCost]);
+    const fetchProduct = async () => {
+      try {
+        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${id}`);
+        if (data?.product) {
+          const p = data.product;
+          setName(p.productName || "");
+          setPrice(p.productPrice || "");
+          setQuantity(p.productQuantity || "");
+          setDiscount(p.productDiscount || "0");
+          setCategory(p.productCategory || "");
+          setDescription(p.productDescription || "");
+          setExistingImages(p.productImages || []);
+        }
+      } catch (err) {
+        setError("Failed to load product");
+      } finally {
+        setFetching(false);
+      }
+    };
+    if (id) fetchProduct();
+  }, [id]);
 
-  console.log(weight, businessDayFrom, bussinessDayTo, shippingCost);
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setNewImages(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setNewPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
 
-  async function handleSubmit(e) {
+  const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    setNewImages(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setNewPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeExisting = (i) => {
+    setExistingImages(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const removeNew = (i) => {
+    setNewPreviews(prev => prev.filter((_, idx) => idx !== i));
+    setNewImages(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name || !price || !quantity || !category || !description) {
+      setError("All required fields must be filled");
+      return;
+    }
     setLoading(true);
-
-    const dimensions = height + "x" + width + "x" + length;
-    const estimatedDelivery = businessDayFrom + " - " + bussinessDayTo;
-
-    productShipping.push(
-      { weight: weight},
-      { dimensions: dimensions },
-      { shippingCost },
-      { estimatedDelivery: estimatedDelivery }
-    );
+    setError("");
 
     try {
-      if (productName.length <= 0) {
-        setNoDataProductName(true);
-      } else {
-        setNoDataProductName(false);
-      }
-      if (productPrice.length <= 0) {
-        setNoDataProductPrice(true);
-      } else {
-        setNoDataProductPrice(false);
-      }
+      const formData = new FormData();
+      formData.append("productName", name);
+      formData.append("productPrice", Number(price));
+      formData.append("productQuantity", Number(quantity));
+      formData.append("productDiscount", Number(discount || 0));
+      formData.append("productCategory", category);
+      formData.append("productDescription", description);
+      formData.append("productImages", JSON.stringify(existingImages));
+      newImages.forEach((file) => formData.append("images", file));
 
-      if (productQuantity.length <= 0) {
-        setNoDataProductQuantity(true);
-      } else {
-        setNoDataProductQuantity(false);
-      }
-      if (productCategory.length <= 0) {
-        setNoDataProductCategory(true);
-      } else {
-        setNoDataProductCategory(false);
-      }
-      if (productDescription.length <= 0) {
-        setNoDataProductProductDescription(true);
-      } else {
-        setNoDataProductProductDescription(false);
-      }
-      if (productImages.length <= 0) {
-        setNoDataProductImages(true);
-      } else {
-        setNoDataProductImages(false);
-      }
+      const { status } = await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/updateproduct/${id}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
-      if (productImages.length > 0) {
-        await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/updateproduct/${id}`, {
-            productName,
-            productPrice,
-            productQuantity,
-            productCategory,
-            productImages,
-            productDescription,
-            productShipping,
-          })
-          .then((res) => {
-            if (res.status == 200) {
-              router.push("/stock");
-              setLoading(false);
-            }
-          });
-      } else {
-        setErrorMessage("All Field Are Required");
-      }
-    } catch (error) {
-      setErrorMessage(error.response.data.message);
+      if (status === 200) router.push("/products");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update product");
+    } finally {
       setLoading(false);
     }
-    setLoading(false);
+  };
+
+  if (fetching) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-16">
+          <div className="w-5 h-5 border-2 border-[#0D0D0D]/20 border-t-[#FFC831] rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
   }
 
-  useEffect(() => {
-    setProductImages(productData.productImages);
-    setProductName(productData.productName);
-    setProductDescription(productData.productDescription);
-    setProductPrice(productData.productPrice);
-    setProductQuantity(productData.productQuantity)
-    setProductCategory(productData.productCategory)
-
-     const shippingData = Array.isArray(productData.productShipping)? productData.productShipping: [];
-
-     const shippingCost = shippingData.find((item) => item.shippingCost)?.shippingCost || 0;
-     const weight = shippingData.find((item) => item.weight)?.weight || "Unknown";
-
-    setShippingCost(shippingCost);
-    setWeight(weight)
-  }, [productData])
-
-  console.log(weight)
   return (
-    <div>
-      <DashboardLayout>
-        <div className="flex flex-col gap-4 ">
-          <div className="w-full py-3 px-2 bg-blue-950 text-white text-xl font-bold rounded-t-lg">
-            Edit Product (
-            <span className="text-green-500 px-2">
-              {productData.productName}
-            </span>
-            )
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto space-y-5">
+        <div>
+          <h2 className="text-lg font-bold text-[#0D0D0D]">Edit Product</h2>
+          <p className="text-sm text-gray-400 truncate">{name || "Loading..."}</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Basic Info */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <Package size={14} className="text-[#FFC831]" /> Basic Information
+            </h3>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Product Name</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Enter product name" className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Description</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your product..." rows={3}
+                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all resize-none" />
+            </div>
           </div>
 
-          <div className="w-[80%] min-h-fit h-fit p-4 bg-white shadow-md rounded-lg text-gray-700">
-            {errorMeesage.length > 0 ? (
-              <p className="text-red-500">{errorMeesage}</p>
-            ) : (
-              ""
-            )}
-            <form className="grid grid-cols-2 gap-4" onSubmit={handleSubmit}>
-              {/* Product Name */}
-              <div className="flex flex-col">
-                <label htmlFor="productName" className="text-xs font-semibold">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  value={productName}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                  }}
-                  id="productName"
-                  className={
-                    noDataProductName
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
+          {/* Pricing & Stock */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <DollarSign size={14} className="text-[#FFC831]" /> Pricing & Stock
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Price (FRw)</label>
+                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0" className={inp} min="0" />
               </div>
-
-              {/* Price */}
-              <div className="flex flex-col">
-                <label htmlFor="price" className="text-xs font-semibold">
-                  Price ($)
-                </label>
-                <input
-                  type="number"
-                  value={productPrice}
-                  onChange={(e) => {
-                    setProductPrice(e.target.value);
-                  }}
-                  id="price"
-                  className={
-                    noDataProductPrice
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="0" className={inp} min="0" />
               </div>
-
-              {/* Stock Quantity */}
-              <div className="flex flex-col">
-                <label htmlFor="stock" className="text-xs font-semibold">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  value={productQuantity}
-                  onChange={(e) => {
-                    setProductQuantity(e.target.value);
-                  }}
-                  id="stock"
-                  className={
-                    noDataProductQuantity
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                />
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Discount (%)</label>
+                <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="0" className={inp} min="0" max="99" />
               </div>
+            </div>
+          </div>
 
-              {/* Category */}
-              <div className="flex flex-col">
-                <label htmlFor="category" className="text-xs font-semibold">
-                  Category
-                </label>
-                <select
-                  id="category"
-                  className={
-                    noDataProductCategory
-                      ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                  value={productCategory}
-                  onChange={(e) => {
-                    setProductCategory(e.target.value);
-                  }}
-                >
-                  <option value={productCategory}>{productCategory}</option>
-                  <option value="electronics">Electronics</option>
-                  <option value="fashion">Fashion</option>
-                  <option value="home&living">Home & Living</option>
-                  <option value="sports">Sports</option>
-                  <option value="beauty">Beauty</option>
-                  <option value="vehicles">Vehicles</option>
-                </select>
-              </div>
+          {/* Category */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <Layers size={14} className="text-[#FFC831]" /> Category
+            </h3>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inp}>
+              <option value="">Select a category</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
 
-              {/* product Shipping */}
-              <div className="flex flex-col col-span-2">
-                <label htmlFor="productName" className="text-xs font-semibold">
-                  Shipping
-                </label>
-                <div className="main-shipping pb-2">
-                  <div className="flex flex-col">
-                    <label htmlFor="size" className="text-xs">
-                      Dimensions
-                    </label>
-                    <div className="shipping">
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setHeight(e.target.value);
-                        }}
-                        placeholder="Height"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setWidth(e.target.value);
-                        }}
-                        placeholder="Width"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        onChange={(e) => {
-                          setLength(e.target.value);
-                        }}
-                        placeholder="Length"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-1">
-                    <label htmlFor="kilograms">Weight (Kg)</label>
-                    <input
-                      type="number"
-                      value={weight}
-                      onChange={(e) => {
-                        setWeight(e.target.value);
-                      }}
-                      id="productName"
-                      className={
-                        noDataProductShipping
-                          ? "border border-red-600 rounded-md p-2 outline-none shadow-sm w-[100px]"
-                          : "border rounded-md p-2 outline-none shadow-sm w-[100px]"
-                      }
-                    />
-                    
-                  </div>
-                  <div className="mt-1">
-                    <label htmlFor="kilograms">Shipping Cost ($)</label>
-                    <input
-                      type="number"
-                      value={shippingCost}
-                      onChange={(e) => {
-                        setShippingCost(e.target.value);
-                      }}
-                      id="productName"
-                      className={
-                        noDataProductShipping
-                          ? "border border-red-600 rounded-md p-2 outline-none shadow-sm w-[100px]"
-                          : "border rounded-md p-2 outline-none shadow-sm w-[100px]"
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="kilograms">Business Day's</label>
-                    <div className="business">
-                      <input
-                        type="number"
-                        value={businessDayFrom}
-                        onChange={(e) => {
-                          setBusinessDayFrom(e.target.value);
-                        }}
-                        placeholder="From"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                      <input
-                        type="number"
-                        value={bussinessDayTo}
-                        onChange={(e) => {
-                          setBussinessDayTo(e.target.value);
-                        }}
-                        placeholder="To"
-                        className={
-                          noDataProductShipping
-                            ? "border border-red-600 rounded-md p-2 outline-none shadow-sm"
-                            : "border rounded-md p-2 outline-none shadow-sm"
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {/* Images */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#0D0D0D] flex items-center gap-2">
+              <ImagePlus size={14} className="text-[#FFC831]" /> Images
+            </h3>
 
-              {/* Product Image Upload */}
-              <div className="col-span-2">
-                <label className="text-xs font-semibold">
-                  Upload Product Images
-                </label>
-                <div
-                  className={
-                    noDataProductImages
-                      ? "w-full h-32 border-2 border-dashed border-red-600 rounded-lg flex flex-col justify-center items-center cursor-pointer bg-gray-100"
-                      : "w-full h-32 border-2 border-dashed border-gray-400 rounded-lg flex flex-col justify-center items-center cursor-pointer bg-gray-100"
-                  }
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                >
-                  <p className="text-gray-600">Drag & Drop Images Here</p>
-                  <p className="text-gray-500">or</p>
-                  <label
-                    htmlFor="image"
-                    className="bg-blue-700 text-white px-3 py-1 rounded-md cursor-pointer hover:bg-blue-800"
-                  >
-                    Select Files
-                  </label>
-                  <input
-                    type="file"
-                    id="image"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                </div>
-              </div>
-
-              {/* Image Preview with Remove Option */}
-              {productImages && (
-                <div className="col-span-2 flex flex-wrap gap-2 p-2 bg-gray-50 rounded-md shadow-inner">
-                  {productImages.map((src, index) => (
-                    <div key={index} className="relative w-24 h-24">
-                      <img
-                        src={src}
-                        alt="Preview"
-                        className="w-full h-full object-cover rounded-md border shadow-sm"
-                      />
-                      {/* Remove Button */}
-                      <button
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white text-sm text-center rounded-full"
-                        onClick={(e) => removeImage(index, e)}
-                      >
-                        &times;
+            {existingImages.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-2">Current Images</p>
+                <div className="flex flex-wrap gap-3">
+                  {existingImages.map((url, i) => (
+                    <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-100 group">
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removeExisting(i)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X size={10} />
                       </button>
-                  
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* Description */}
-              <div className="col-span-2 flex flex-col">
-                <label htmlFor="description" className="text-xs font-semibold">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  value={productDescription}
-                  onChange={(e) => {
-                    setProductDescription(e.target.value);
-                  }}
-                  rows="3"
-                  className={
-                    noDataProductDescription
-                      ? "border rounded-md border-red-600 p-2 outline-none shadow-sm"
-                      : "border rounded-md p-2 outline-none shadow-sm"
-                  }
-                ></textarea>
               </div>
+            )}
 
-              {/* Submit Button */}
-              <div className="col-span-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-blue-950 text-white py-2 px-4 rounded-md hover:bg-blue-800 transition"
-                >
-                  {loading ? (
-                    <ClipLoader color="rgb(255,255,255)" size={20} />
-                  ) : (
-                    "Update Product"
-                  )}
-                </button>
+            <div
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
+                dragOver ? "border-[#FFC831] bg-[#FFC831]/5" : "border-gray-100 hover:border-[#FFC831]/30"
+              }`}
+            >
+              <ImagePlus size={28} className="mx-auto text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">Add new images</p>
+              <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </div>
+
+            {newPreviews.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase w-full mb-0">New Images</p>
+                {newPreviews.map((src, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-100 group">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removeNew(i)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </form>
+            )}
           </div>
-        </div>
-      </DashboardLayout>
-    </div>
-  );
-};
 
-export default Create;
+          {/* Submit */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => router.push("/products")}
+              className="px-5 py-2.5 text-sm font-semibold rounded-xl border border-gray-100 text-gray-500 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="px-6 py-2.5 bg-[#FFC831] text-[#0D0D0D] text-sm font-bold rounded-xl hover:bg-[#FFD454] disabled:opacity-50 transition-all shadow-sm flex items-center gap-2">
+              {loading ? (
+                <><span className="w-4 h-4 border-2 border-[#0D0D0D]/20 border-t-[#0D0D0D] rounded-full animate-spin" /> Saving...</>
+              ) : (
+                <><Save size={14} /> Save Changes</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </DashboardLayout>
+  );
+}

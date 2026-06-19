@@ -26,12 +26,10 @@ header, footer {
   color: var(--white);
 }
 
-/* Buttons */
-
-
-button:hover {
+/* Buttons — only apply default hover to non-utility buttons */
+button:not([class]):hover {
   background-color: var(--dark-gray);
-  color: var(--alibaba-orange); /* Fixed here */
+  color: var(--alibaba-orange);
 }
 
 

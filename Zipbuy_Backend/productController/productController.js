@@ -2,6 +2,14 @@ import productSchema from "../productSchema.js";
 import placeOrderSchema from "../placeOrderSchema.js"
 import Stripe from "stripe";
 import dotenv from "dotenv";
+import { v2 as cloudinary } from "cloudinary";
+import stream from "stream";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 const stripe = Stripe(
   process.env.STRIPE_SECRET_KEY
 );
@@ -12,10 +20,9 @@ const secret_key = process.env.SECRET_KEY;
 // that is router to display all product we have in database
 export const allProduct = async (req, res) => {
   try {
-    const productsData = await productSchema.find();
+    const productsData = await productSchema.find().populate("business", "name businessProfile.businessName businessProfile.businessLogo");
     if (productsData) {
       res.status(200).json({ success: true, productData: productsData });
-      //res.status(200).json(await productSchema.find());
     }
   } catch (error) {
     res.status(400).json({ success: false, message: "Failed To Fetch Data" });
@@ -24,13 +31,18 @@ export const allProduct = async (req, res) => {
 
 //that is router to fetch only one choosen product
 export const Product = async (req, res) => {
-  const { id } = req.params;
-  const product = await productSchema.findOne({ _id: id });
+  try {
+    const { id } = req.params;
+    const product = await productSchema.findOne({ _id: id });
 
-  if (product) {
-    res.status(200).json({ success: true, product });
-  } else {
-    res.status(400).json({ sucess: false, message: "failed to fetch product" });
+    if (product) {
+      res.status(200).json({ success: true, product });
+    } else {
+      res.status(404).json({ success: false, message: "Product not found" });
+    }
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch product" });
   }
 };
 
@@ -38,59 +50,67 @@ export const Product = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
   try {
-    if (id) {
-      const {
-        productName,
-        productPrice,
-        productQuantity,
-        productCategory,
-        productDescription,
-        productImages,
-        productShipping,
-        productDiscount,
-      } = req.body;
+    if (!id) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
 
-      /*
-      if (
-        !productName ||
-        !productPrice ||
-        !productQuantity ||
-        !productCategory ||
-        !productDescription ||
-        !productImages ||
-        !productShipping ||
-        !productDiscount
-      ) {
-        return res
-          .status(401)
-          .json({ success: false, message: "All Field Are Required" });
-      }
-       */   
-      const createdProduct = await productSchema.findByIdAndUpdate(id, {
-        productName,
-        productPrice,
-        productQuantity,
-        productCategory,
-        productDiscount,
-        productDescription,
-        productImages,
-        productShipping,
-      });
+    const {
+      productName,
+      productPrice,
+      productQuantity,
+      productCategory,
+      productDescription,
+      productImages,
+      productShipping,
+      productDiscount,
+    } = req.body;
 
-      if (createdProduct) {
-        res
-          .status(200)
-          .json({ success: true, message: "product updated successfully" });
-      } else {
-        res
-          .status(400)
-          .json({ sucess: false, message: "failed to update product" });
+    let imageUrls = [];
+    if (productImages) {
+      imageUrls = typeof productImages === "string" ? JSON.parse(productImages) : productImages;
+    }
+
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const uploadResult = await new Promise((resolve, reject) => {
+          const bufferStream = new stream.PassThrough();
+          bufferStream.end(file.buffer);
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "uploads" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          bufferStream.pipe(uploadStream);
+        });
+        imageUrls.push(uploadResult.secure_url);
       }
+    }
+
+    const shippingDetails = productShipping
+      ? (typeof productShipping === "string" ? JSON.parse(productShipping) : productShipping)
+      : undefined;
+
+    const createdProduct = await productSchema.findByIdAndUpdate(id, {
+      productName,
+      productPrice,
+      productQuantity,
+      productCategory,
+      productDiscount: Number(productDiscount),
+      productDescription,
+      productImages: imageUrls,
+      productShipping: shippingDetails,
+    }, { new: true });
+
+    if (createdProduct) {
+      res.status(200).json({ success: true, message: "Product updated successfully", data: createdProduct });
     } else {
-      res.status(400).json({ success: false, message: "no product selected" });
+      res.status(400).json({ success: false, message: "Failed to update product" });
     }
   } catch (error) {
-    res.status(200).json({ success: false, messageMessage: error });
+    console.error("Error updating product:", error);
+    res.status(500).json({ success: false, message: "Something went wrong" });
   }
 };
 
@@ -151,6 +171,12 @@ export const placeOrder = async (req, res) => {
       return;
     }
 
+    // Look up products to find the business owner (multi-vendor)
+    const productIds = cartProducts.map(p => p._id || p.id).filter(Boolean);
+    const products = productIds.length > 0 ? await productSchema.find({ _id: { $in: productIds } }).select("business").lean() : [];
+    const businessIds = [...new Set(products.map(p => p.business?.toString()).filter(Boolean))];
+    const business = businessIds.length === 1 ? businessIds[0] : null;
+
     const order = await placeOrderSchema.create({
       email,
       fullName,
@@ -161,6 +187,7 @@ export const placeOrder = async (req, res) => {
       orderToken,
       cartProducts,
       totalAmount,
+      business,
     });
 
     if (!order) {

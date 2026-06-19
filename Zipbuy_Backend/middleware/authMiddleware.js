@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/userModel.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || "yourverysecretkey";
 
@@ -7,12 +6,9 @@ const JWT_SECRET = process.env.JWT_SECRET || "yourverysecretkey";
 export const protect = async (req, res, next) => {
   let token;
 
-  // Check for token in cookies
   if (req.cookies.token) {
     token = req.cookies.token;
-  } 
-  // Alternatively check Authorization header
-  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
 
@@ -21,11 +17,14 @@ export const protect = async (req, res, next) => {
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Add user to request
-    req.user = { id: decoded.id, isAdmin: decoded.isAdmin };
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      isAdmin: decoded.isAdmin,
+      verificationStatus: decoded.verificationStatus
+    };
     next();
   } catch (error) {
     console.error('Token verification error:', error);
@@ -35,9 +34,31 @@ export const protect = async (req, res, next) => {
 
 // Admin only middleware
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.isAdmin) {
+  if (req.user && (req.user.isAdmin || req.user.role === 'admin')) {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as admin' });
+  }
+};
+
+// Business only middleware
+export const businessOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'business') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as business' });
+  }
+};
+
+// Verified business only middleware
+export const verifiedBusinessOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'business' && req.user.verificationStatus === 'approved') {
+    next();
+  } else if (req.user && req.user.role === 'business' && req.user.verificationStatus === 'pending') {
+    res.status(403).json({ message: 'Business account pending verification. Please wait for admin approval.' });
+  } else if (req.user && req.user.role === 'business' && req.user.verificationStatus === 'rejected') {
+    res.status(403).json({ message: 'Business verification rejected. Contact admin for details.' });
+  } else {
+    res.status(403).json({ message: 'Not authorized as verified business' });
   }
 };

@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 import multer from "multer";
 import productSchema from "./productSchema.js";
@@ -28,7 +29,15 @@ import {
   placeOrder,
   relatedProduct,
 } from "./productController/productController.js";
+import profileRoutes from "./routes/profileRoutes.js";
 import authRoutes from './routes/authRoutes.js';
+import businessRoutes from './routes/businessRoutes.js';
+import adminBusinessRoutes from './routes/adminBusinessRoutes.js';
+import businessProductRoutes from './routes/businessProductRoutes.js';
+import storefrontRoutes from './routes/storefrontRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import Category from "./models/categoryModel.js";
 
 // Initialize app and configuration
 const app = express();
@@ -42,10 +51,14 @@ mongoose.connect(process.env.MONGO_DB_URL || 'mongodb://localhost:27017/zipbuy')
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET || process.env.STRIPE_SECRET_KEY);
 
 // Cloudinary configuration
-
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Background removal utility
 const removeBackground = async (fileBuffer) => {
@@ -152,6 +165,7 @@ app.post("/stripe-webhook", express.raw({type: 'application/json'}), async (req,
 
 // Now apply other middleware
 app.use(cors(corsOptions));
+app.use(compression());
 app.options('*', cors(corsOptions)); // Enable preflight for all routes
 app.use(cookieParser());
 app.use(express.json());
@@ -171,11 +185,6 @@ app.use((req, res, next) => {
   res.header("Vary", "Origin"); // Important for proper caching of CORS responses
   next();
 });
-
-// Database connection
-mongoose.connect(process.env.MONGO_DB_URL)
-  .then(() => console.log("Database connected"))
-  .catch((error) => console.log("Database connection failed:", error));
 
 // Validate essential environment variables
 if (!process.env.JWT_SECRET) {
@@ -293,7 +302,7 @@ router.post("/adminregister", AdminRegister);
 // Product routes
 router.post("/createproduct", upload.array("images", 50), async (req, res) => {
   try {
-    const { productName, productPrice, productQuantity, productCategory, productDiscount, productDescription, productShipping } = req.body;
+    const { productName, productPrice, productQuantity, productCategory, productDiscount, productDescription, productShipping, keepBackground } = req.body;
 
     if (!productName || !productPrice || !productQuantity || !productCategory || !productDiscount || !productDescription || !productShipping) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -306,7 +315,10 @@ router.post("/createproduct", upload.array("images", 50), async (req, res) => {
     const uploadedImageUrls = [];
 
     for (const file of req.files) {
-      const imageBuffer = await removeBackground(file.buffer);
+      let imageBuffer = file.buffer;
+      if (keepBackground !== "true") {
+        imageBuffer = await removeBackground(file.buffer);
+      }
       const uploadResult = await new Promise((resolve, reject) => {
         const bufferStream = new stream.PassThrough();
         bufferStream.end(imageBuffer);
@@ -339,6 +351,7 @@ router.post("/createproduct", upload.array("images", 50), async (req, res) => {
       productDescription,
       productImages: uploadedImageUrls,
       productShipping: shippingDetails,
+      bg_removed: keepBackground !== "true",
     });
 
     return res.status(200).json({ success: true, message: "Product created successfully", data: createdProduct });
@@ -351,7 +364,7 @@ router.post("/createproduct", upload.array("images", 50), async (req, res) => {
 router.get("/allproducts", allProduct);
 router.get("/product/:id", Product);
 router.delete("/delete/:id", deleteProduct);
-router.put("/updateproduct/:id", updateProduct);
+router.put("/updateproduct/:id", upload.array("images", 50), updateProduct);
 router.post("/specificproduct", specificProduct);
 router.post("/placeorder", placeOrder);
 router.get("/profile", getUserData);
@@ -368,40 +381,42 @@ router.post("/logout", (req, res) => {
   }
 });
 
-// Configure middleware for auth
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-// Configure CORS with proper security for credentials
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc)
-    if(!origin) return callback(null, true);
-    
-    // List of allowed origins
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001'
-    ];
-    
-    if(allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
-}));
+// Public categories endpoint (no auth needed)
+router.get("/categories", async (req, res) => {
+  try {
+    const categories = await Category.find({ isActive: true }).sort({ name: 1 }).lean();
+    res.json({ success: true, categories });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 // Apply router
 app.use(router);
 
 // Auth routes
 app.use('/api', authRoutes);
+
+// Business routes
+app.use('/api/business', businessRoutes);
+
+// Admin business management routes
+app.use('/api/admin', adminBusinessRoutes);
+
+// Admin dashboard/orders/customers/products routes
+app.use('/api/admin', adminRoutes);
+
+// Category CRUD routes
+app.use('/api/categories', categoryRoutes);
+
+// Business product management routes
+app.use('/api/business', businessProductRoutes);
+
+// Public storefront routes
+app.use('/api', storefrontRoutes);
+
+// Profile routes
+app.use('/api/profile', profileRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) => {

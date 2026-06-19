@@ -1,24 +1,23 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-const useToggleModeStore = create((set) => ({
-  mode: typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mode")) ?? true : true,
-  toggleMode: () =>
-    set((state) => {
-      const newMode = !state.mode;
-      localStorage.setItem("mode", JSON.stringify(newMode)); 
-      return { mode: newMode };
+const useToggleModeStore = create(
+  persist(
+    (set) => ({
+      mode: true,
+      toggleMode: () =>
+        set((state) => ({ mode: !state.mode })),
     }),
-}));
+    { name: "zipbuy_mode" }
+  )
+);
 
 export default useToggleModeStore;
 
+const useToggleDashboardStateStore = create((set) => ({
+  dashboardState: false,
+  toggleDashboardState: () =>
+    set((state) => ({ dashboardState: !state.dashboardState })),
+}));
 
-const useToggleDashboardStateStore = create((set) =>( {
-    dashboardState:false,
-    toggleDashboardState: () => 
-        set((state) => ({dashboardState: !state.dashboardState}))
-    
-
-}))
-
-export {useToggleDashboardStateStore};
+export { useToggleDashboardStateStore };

@@ -1,199 +1,208 @@
-"use client"
+"use client";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import car from "../../../public/car.jpg";
-import "./product.css"
-import Image from "next/image"
-import axios from "axios"
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import axios from "axios";
+import { useParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, ImageOff, Tag, Package, Layers, Percent } from "lucide-react";
+import Link from "next/link";
 
-const Product = () => {
-  const [productData, setProductData] = useState({});
-  const [proImage, setProImage] = useState("");
-  const {id} = useParams();
-  console.log("id is:", id);
+export default function ProductDetail() {
+  const { id } = useParams();
+  const [product, setProduct] = useState(null);
+  const [currentImage, setCurrentImage] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  async function fectProductData(){
-    try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${id}`);
-      if(response){
-        setProductData(response.data.product);
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${id}`);
+        if (data?.product) setProduct(data.product);
+      } catch (err) {
+        console.error("Failed to fetch product:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  useEffect(()=>{
-    fectProductData()
-  },[id])
+    };
+    if (id) fetchProduct();
+  }, [id]);
 
-  function displayimage(index){
-    setProImage(Number(index));
-  }
-  console.log("product image real", proImage);
-
-  function increaseImage(){
-    if (productData.productImages.length - 1 > proImage) {
-      setProImage((prev) => Number(prev) + 1);
-    } else if (productData.productImages.length == proImage) {
-      setProImage((prev) => Number(prev));
-    }
-  }
-  function decreaseImage(){
-    if (productData.productImages.length > 0 && proImage >= 1){
-      setProImage((prev) => Number(prev) - 1);
-     }else{
-    setProImage((prev) => Number(prev));
-     }
-    }
-  return (
-    <div>
+  if (loading) {
+    return (
       <DashboardLayout>
-        <div className="w-full py-3 px-2 bg-blue-950 text-white text-xl font-bold rounded-t-lg">
-          View Product
-        </div>
-
-        <div className="view-product mt-3 w-full">
-          <div className="bg-blue-950 h-[450px] overflow-y-scroll text-gray-400 text-center rounded-lg py-2 px-2">
-            <h1 className="font-bold">View</h1>
-            <div className="flex flex-col gap-2 py-3">
-              {productData?.productImages?.map((image, index) => (
-                <div
-                  key={index}
-                  className="w-[70px] h-[70px]"
-                  onClick={() => {
-                    displayimage(index);
-                  }}
-                >
-                  <Image
-                    src={image}
-                    key={index}
-                    alt="product image"
-                    width={80}
-                    height={20}
-                    className="object-cover w-full h-full rounded-md border-2 border-gray-200 cursor-pointer hover:border-4"
-                  ></Image>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="shadow-lg shadow-gray-800 rounded-lg p-4 h-[440px]">
-            <div className="h-[7%] pb-1">
-              {productData?.productName?.length > 20
-                ? productData.productName.slice(0, 20)
-                : productData.productName}
-            </div>
-            <div className="w[100%] h-[93%] relative">
-              <div className="absolute top-[150px] font-bold">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="white"
-                  className="w-10 h-10 text-black bg-gray-500 p-2 rounded-full hover:bg-gray-400 hover:cursor-pointer "
-                  viewBox="0 0 448 512"
-                  onClick={decreaseImage}
-                >
-                  <path d="M9.4 278.6c-12.5-12.5-12.5-32.8 0-45.3l160-160c9.2-9.2 22.9-11.9 34.9-6.9s19.8 16.6 19.8 29.6l0 96 184 0c22.1 0 40 17.9 40 40l0 48c0 22.1-17.9 40-40 40l-184 0 0 96c0 12.9-7.8 24.6-19.8 29.6s-25.7 2.2-34.9-6.9l-160-160z" />
-                </svg>
-              </div>
-              <Image
-                src={
-                  proImage
-                    ? productData?.productImages?.[proImage]
-                    : productData?.productImages?.[0] || car
-                }
-                alt="main product image"
-                width={100}
-                height={100}
-                className="w-[70%] mx-auto h-full object-cover rounded-lg"
-              ></Image>
-              <div className="absolute top-[150px] font-bold ml-[410px]">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="white"
-                  className="w-10 h-10 text-black bg-gray-500 p-2 rounded-full hover:bg-gray-400 hover:cursor-pointer "
-                  viewBox="0 0 512 512"
-                  onClick={increaseImage}
-                >
-                  <path d="M334.5 414c8.8 3.8 19 2 26-4.6l144-136c4.8-4.5 7.5-10.8 7.5-17.4s-2.7-12.9-7.5-17.4l-144-136c-7-6.6-17.2-8.4-26-4.6s-14.5 12.5-14.5 22l0 72L32 192c-17.7 0-32 14.3-32 32l0 64c0 17.7 14.3 32 32 32l288 0 0 72c0 9.6 5.7 18.2 14.5 22z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg shadow-lg shadow-gray-800 bg-white pt-2 pb-10 px-4">
-            <div className="py-2">
-              <p className="font-bold ">Title</p>
-              <p>{productData.productName}</p>
-            </div>
-            <div className="bg-blue-950 rounded-md p-2 text-white font-bold">
-              <span>⭐⭐⭐⭐⭐</span>
-              <span className="ml-4">5 Reviews</span>
-            </div>
-            <div>
-              <p>
-                Price:
-                <span>
-                  <del>{productData.productPrice}</del>
-                </span>
-              </p>
-            </div>
-            <div className="py-2">
-              <span className="text-2xl font-semibold text-gray-600 ml-1">
-                Price:
-              </span>
-              <span className="font-bold text-2xl">$</span>
-              <span className="text-2xl font-semibold ml-1">
-                {(
-                  productData.productPrice -
-                  (productData.productPrice / 100) * productData.productDiscount
-                ).toFixed(2)}
-              </span>
-            </div>
-            <div className="font-bold text-xl">
-              <p>
-                Discount: <span>{productData.productDiscount || 0}%</span>
-              </p>
-            </div>
-            <div className="font-bold text-xl">
-              <h3 className="text-gray-600">Shipping Information:</h3>
-              {productData.productShipping &&
-              productData.productShipping.length > 0 ? (
-                <div className="font-semibold text-xs text-gray-600">
-                  <p>
-                    Weight:{" "}
-                    {productData.productShipping[0].weight + "g" ||
-                      "Not specified"}
-                  </p>
-                  <p>
-                    Dimensions:{" "}
-                    {productData.productShipping[1].dimensions ||
-                      "Not specified"}
-                  </p>
-                  <p>
-                    shippingCost:{" "}
-                    {productData.productShipping[2].shippingCost ||
-                      "Not specified"}
-                  </p>
-                  <p>
-                    estimatedDelivery:{" "}
-                    {productData.productShipping[3].estimatedDelivery ||
-                      "Not specified"}
-                  </p>
-                </div>
-              ) : (
-                <p>No shipping information available.</p>
-              )}
-            </div>
-            <div>
-              <p className="font-bold py-2 text-xl">Product Description</p>
-              <p className="text-gray-600">{productData.productDescription}</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center py-16">
+          <div className="w-5 h-5 border-2 border-[#0D0D0D]/20 border-t-[#FFC831] rounded-full animate-spin" />
         </div>
       </DashboardLayout>
-    </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-16">
+          <p className="text-gray-400">Product not found.</p>
+          <Link href="/products" className="text-[#FFC831] text-sm font-semibold hover:underline mt-2 inline-block">Back to Products</Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const discountedPrice = product.productDiscount
+    ? Math.round(product.productPrice - (product.productPrice / 100) * product.productDiscount)
+    : product.productPrice;
+
+  const nextImage = () => setCurrentImage((prev) => (prev + 1) % (product.productImages?.length || 1));
+  const prevImage = () => setCurrentImage((prev) => (prev - 1 + (product.productImages?.length || 1)) % (product.productImages?.length || 1));
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-5xl mx-auto space-y-5">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <Link href="/products" className="hover:text-[#FFC831] transition-colors">Products</Link>
+          <span>/</span>
+          <span className="text-[#0D0D0D] font-semibold truncate max-w-[200px]">{product.productName}</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Image Gallery */}
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden relative aspect-square">
+              {product.productImages?.[currentImage] ? (
+                <img src={product.productImages[currentImage]} alt={product.productName}
+                  className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <ImageOff size={48} className="text-gray-200" />
+                </div>
+              )}
+
+              {(product.productImages?.length || 0) > 1 && (
+                <>
+                  <button onClick={prevImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm border border-gray-100 flex items-center justify-center hover:bg-white transition-colors shadow-sm">
+                    <ChevronLeft size={14} className="text-gray-600" />
+                  </button>
+                  <button onClick={nextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm border border-gray-100 flex items-center justify-center hover:bg-white transition-colors shadow-sm">
+                    <ChevronRight size={14} className="text-gray-600" />
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {product.productImages.map((_, i) => (
+                      <button key={i} onClick={() => setCurrentImage(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          i === currentImage ? "bg-[#FFC831] w-4" : "bg-white/60 hover:bg-white/90"
+                        }`} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {product.productImages?.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {product.productImages.map((url, i) => (
+                  <button key={i} onClick={() => setCurrentImage(i)}
+                    className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                      i === currentImage ? "border-[#FFC831] opacity-100" : "border-gray-100 opacity-60 hover:opacity-100"
+                    }`}>
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Product Info */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-lg font-bold text-[#0D0D0D] leading-tight">{product.productName}</h1>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                  product.productStatus === "active" ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-500"
+                }`}>
+                  {product.productStatus || "active"}
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-black text-[#0D0D0D]">FRw {discountedPrice?.toLocaleString()}</p>
+                {product.productDiscount > 0 && (
+                  <>
+                    <p className="text-sm text-gray-400 line-through">FRw {product.productPrice?.toLocaleString()}</p>
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">-{product.productDiscount}%</span>
+                  </>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {product.productQuantity !== undefined && (
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <Package size={13} className="text-gray-300 mb-1" />
+                    <p className="text-[10px] text-gray-400">Stock</p>
+                    <p className="text-sm font-bold text-[#0D0D0D]">{product.productQuantity}</p>
+                  </div>
+                )}
+                {product.productCategory && (
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <Layers size={13} className="text-gray-300 mb-1" />
+                    <p className="text-[10px] text-gray-400">Category</p>
+                    <p className="text-sm font-bold text-[#0D0D0D]">{product.productCategory}</p>
+                  </div>
+                )}
+              </div>
+
+              {product.business && (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] text-gray-400">Listed by</p>
+                  <p className="text-sm font-semibold text-[#0D0D0D]">
+                    {product.business?.businessProfile?.businessName || product.business?.email || "Unknown"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-[#0D0D0D] mb-2">Description</h3>
+              <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
+                {product.productDescription || "No description provided."}
+              </p>
+            </div>
+
+            {/* Shipping */}
+            {product.productShipping?.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-100 p-5">
+                <h3 className="text-sm font-bold text-[#0D0D0D] mb-3">Shipping Information</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {product.productShipping.map((s, i) => {
+                    const entries = Object.entries(s);
+                    return entries.map(([key, val]) => (
+                      <div key={`${i}-${key}`} className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, " $1")}</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D]">{String(val)}</p>
+                      </div>
+                    ));
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Link href={`/product/edit/${product._id}`}
+                className="flex-1 px-4 py-2.5 bg-[#FFC831] text-[#0D0D0D] text-sm font-bold rounded-xl hover:bg-[#FFD454] transition-all shadow-sm text-center">
+                Edit Product
+              </Link>
+              <Link href="/products"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-gray-100 text-gray-500 hover:bg-gray-50 transition-colors text-center">
+                Back to List
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
   );
 }
-
-export default Product

@@ -1,244 +1,233 @@
 "use client";
 import { useState, useEffect } from "react";
 import DashboardLayout from "../../components/DashboardLayout";
+import api from "../../lib/api";
+import {
+  Users, Search, ChevronLeft, ChevronRight, Mail, ShoppingCart,
+  ToggleRight, ToggleLeft, Eye, X, DollarSign, Calendar, UserCircle,
+} from "lucide-react";
 
-// Colors matching our dark theme
-const COLORS = {
-  primary: "#2563eb", // Blue
-  secondary: "#1e293b", // Slate-800
-  background: "#0f172a", // Slate-900
-  text: "#f8fafc", // Slate-50
-  textMuted: "#94a3b8", // Slate-400
-  border: "#334155", // Slate-700
-  success: "#10b981", // Emerald-500
-  danger: "#ef4444", // Red-500
-  warning: "#f59e0b", // Amber-500
-};
-
-const CustomersPage = () => {
+export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [viewCustomer, setViewCustomer] = useState(null);
 
-  // Sample customer data
-  useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      const mockCustomers = [
-        { id: 1, name: "John Doe", email: "john.doe@example.com", orders: 12, totalSpent: 1249.99, status: "Active", lastOrder: "2 days ago" },
-        { id: 2, name: "Jane Smith", email: "jane.smith@example.com", orders: 8, totalSpent: 879.50, status: "Active", lastOrder: "1 week ago" },
-        { id: 3, name: "Michael Johnson", email: "michael.j@example.com", orders: 5, totalSpent: 532.25, status: "Active", lastOrder: "2 weeks ago" },
-        { id: 4, name: "Sarah Williams", email: "sarah.w@example.com", orders: 3, totalSpent: 329.99, status: "Inactive", lastOrder: "1 month ago" },
-        { id: 5, name: "Robert Brown", email: "robert.b@example.com", orders: 7, totalSpent: 815.75, status: "Active", lastOrder: "3 days ago" },
-        { id: 6, name: "Emily Davis", email: "emily.d@example.com", orders: 2, totalSpent: 159.98, status: "Inactive", lastOrder: "2 months ago" },
-        { id: 7, name: "David Miller", email: "david.m@example.com", orders: 9, totalSpent: 945.50, status: "Active", lastOrder: "5 days ago" },
-        { id: 8, name: "Lisa Wilson", email: "lisa.w@example.com", orders: 6, totalSpent: 725.00, status: "Active", lastOrder: "1 week ago" },
-      ];
-      setCustomers(mockCustomers);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  useEffect(() => { fetchCustomers(); }, [page, search]);
+
+  async function fetchCustomers() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page, limit: "15" });
+      if (search) params.set("search", search);
+      const { data } = await api.get(`/api/admin/customers?${params}`);
+      if (data.success) {
+        setCustomers(data.customers);
+        setTotalPages(data.pagination.pages);
+        setTotal(data.pagination.total);
+      }
+    } catch (err) { console.error("Fetch customers error:", err); }
+    finally { setLoading(false); }
+  }
+
+  async function handleToggleStatus(id) {
+    try {
+      await api.put(`/api/admin/customers/${id}/toggle-status`);
+      fetchCustomers();
+    } catch (err) { console.error("Toggle error:", err); }
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header with actions */}
-        <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center rounded-xl p-6 shadow-md" style={{ backgroundColor: COLORS.secondary, borderBottom: `1px solid ${COLORS.border}` }}>
-          <div>
-            <h1 className="text-xl font-semibold" style={{ color: COLORS.text }}>Customers</h1>
-            <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>
-              Manage your customer database
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search customers..."
-                className="px-4 py-2 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                style={{ 
-                  backgroundColor: COLORS.background, 
-                  color: COLORS.text,
-                  borderColor: COLORS.border,
-                  focusRing: COLORS.primary
-                }}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3" style={{ color: COLORS.textMuted }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-            
-            <button className="px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center" 
-              style={{ 
-                backgroundColor: COLORS.primary,
-                color: COLORS.text
-              }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Customer
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-[#0D0D0D] tracking-tight">Customers</h2>
+          <p className="text-sm text-gray-400 mt-0.5">{total} registered customers</p>
         </div>
-
-        {/* Customer stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-xl p-6 shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-            <div className="flex items-center">
-              <div className="mr-4 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.primary}/20` }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" style={{ color: COLORS.primary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm" style={{ color: COLORS.textMuted }}>Total Customers</p>
-                <p className="text-2xl font-bold" style={{ color: COLORS.text }}>8</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="rounded-xl p-6 shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-            <div className="flex items-center">
-              <div className="mr-4 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.success}/20` }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" style={{ color: COLORS.success }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm" style={{ color: COLORS.textMuted }}>Active Customers</p>
-                <p className="text-2xl font-bold" style={{ color: COLORS.text }}>6</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="rounded-xl p-6 shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-            <div className="flex items-center">
-              <div className="mr-4 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.warning}/20` }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" style={{ color: COLORS.warning }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm" style={{ color: COLORS.textMuted }}>Total Revenue</p>
-                <p className="text-2xl font-bold" style={{ color: COLORS.text }}>$5,638.96</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Customers Table */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: COLORS.primary }}></div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-            <table className="min-w-full divide-y" style={{ borderColor: COLORS.border }}>
-              <thead>
-                <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Customer
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Orders
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Spent
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Last Order
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: COLORS.textMuted }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: COLORS.border }}>
-                {customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-black/20">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.background }}>
-                          <span className="text-sm" style={{ color: COLORS.primary }}>{customer.name.charAt(0)}</span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium" style={{ color: COLORS.text }}>{customer.name}</div>
-                          <div className="text-xs" style={{ color: COLORS.textMuted }}>{customer.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: COLORS.text }}>
-                      {customer.orders}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: COLORS.text }}>
-                      ${customer.totalSpent.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: COLORS.textMuted }}>
-                      {customer.lastOrder}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
-                        style={{ 
-                          backgroundColor: 
-                            customer.status === "Active" ? `${COLORS.success}/20` : `${COLORS.danger}/20`,
-                          color: 
-                            customer.status === "Active" ? COLORS.success : COLORS.danger
-                        }}>
-                        {customer.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.primary }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.primary }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button className="p-1 rounded hover:bg-black/20" style={{ color: COLORS.danger }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center px-6 py-3 rounded-xl shadow-md" style={{ backgroundColor: COLORS.secondary }}>
-          <div className="text-sm" style={{ color: COLORS.textMuted }}>
-            Showing <span style={{ color: COLORS.text }}>1</span> to <span style={{ color: COLORS.text }}>8</span> of <span style={{ color: COLORS.text }}>8</span> results
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.background, color: COLORS.textMuted }}>
-              Previous
-            </button>
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.primary, color: COLORS.text }}>
-              1
-            </button>
-            <button className="px-3 py-1 text-sm rounded" style={{ backgroundColor: COLORS.background, color: COLORS.textMuted }}>
-              Next
-            </button>
-          </div>
+        <div className="relative w-full sm:w-auto">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+          <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by name or email..."
+            className="w-full sm:w-64 bg-white border border-gray-100/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-[#0D0D0D] placeholder:text-gray-300 outline-none focus:border-[#FFC831] focus:ring-2 focus:ring-[#FFC831]/10 transition-all"
+          />
         </div>
       </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100/80 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-[#0D0D0D]/10 border-t-[#FFC831] rounded-full animate-spin" />
+          </div>
+        ) : customers.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Users size={28} className="text-gray-200" />
+            </div>
+            <p className="text-sm font-semibold text-gray-400">No customers found</p>
+            <p className="text-xs text-gray-300 mt-1">{search ? "Try a different search term" : "Customers will appear once people create accounts"}</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Customer</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Orders</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Total Spent</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Last Order</th>
+                    <th className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {customers.map((c) => (
+                    <tr key={c._id} className="hover:bg-gray-50/60 transition-colors group">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FFC831]/20 to-[#FFA800]/10 border border-[#FFC831]/15 flex items-center justify-center text-xs font-bold text-[#0D0D0D] shrink-0 shadow-sm">
+                            {(c.firstName || c.name || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#0D0D0D] truncate max-w-[140px]">
+                              {c.firstName} {c.lastName || ""}
+                            </p>
+                            <p className="text-[11px] text-gray-400 truncate">{c.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-gray-500 hidden md:table-cell">{c.orderCount || 0}</td>
+                      <td className="px-5 py-3.5 hidden lg:table-cell">
+                        <p className="text-sm font-bold text-[#0D0D0D]">FRw {(c.totalSpent || 0).toLocaleString()}</p>
+                      </td>
+                      <td className="px-5 py-3.5 text-[11px] text-gray-400 hidden sm:table-cell">
+                        {c.lastOrder ? new Date(c.lastOrder).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                          c.isActive !== false
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                            : "bg-gray-50 text-gray-500 border border-gray-100"
+                        }`}>
+                          {c.isActive !== false ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => setViewCustomer(c)}
+                            className="p-2 rounded-xl hover:bg-gray-100/80 transition-all opacity-0 group-hover:opacity-100 lg:opacity-100">
+                            <Eye size={15} className="text-gray-400" />
+                          </button>
+                          <button onClick={() => handleToggleStatus(c._id)}
+                            className="p-2 rounded-xl hover:bg-gray-100/80 transition-all"
+                            title={c.isActive !== false ? "Deactivate" : "Activate"}>
+                            {c.isActive !== false
+                              ? <ToggleRight size={15} className="text-emerald-500" />
+                              : <ToggleLeft size={15} className="text-gray-400" />
+                            }
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-50">
+              <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>
+              <div className="flex items-center gap-2">
+                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                  className="p-2 rounded-xl bg-white border border-gray-100/80 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  <ChevronLeft size={14} className="text-gray-500" />
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button key={p} onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                        p === page ? "bg-[#FFC831] text-[#0D0D0D] shadow-sm" : "bg-white border border-gray-100/80 text-gray-500 hover:bg-gray-50"
+                      }`}>{p}</button>
+                  );
+                })}
+                <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+                  className="p-2 rounded-xl bg-white border border-gray-100/80 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                  <ChevronRight size={14} className="text-gray-500" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* View Customer Modal */}
+      {viewCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setViewCustomer(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm z-10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+              <h3 className="text-sm font-bold text-[#0D0D0D]">Customer Details</h3>
+              <button onClick={() => setViewCustomer(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-all">
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FFC831]/25 to-[#FFA800]/10 border border-[#FFC831]/20 flex items-center justify-center text-lg font-bold text-[#0D0D0D] shrink-0 shadow-sm">
+                  {(viewCustomer.firstName || viewCustomer.name || "U").charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-[#0D0D0D]">{viewCustomer.firstName} {viewCustomer.lastName || ""}</p>
+                  <p className="text-xs text-gray-400">{viewCustomer.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50/80 rounded-xl p-3.5 space-y-1">
+                  <ShoppingCart size={14} className="text-gray-300" />
+                  <p className="text-[10px] text-gray-400">Orders</p>
+                  <p className="text-lg font-bold text-[#0D0D0D]">{viewCustomer.orderCount || 0}</p>
+                </div>
+                <div className="bg-gray-50/80 rounded-xl p-3.5 space-y-1">
+                  <DollarSign size={14} className="text-gray-300" />
+                  <p className="text-[10px] text-gray-400">Total Spent</p>
+                  <p className="text-lg font-bold text-[#0D0D0D]">FRw {(viewCustomer.totalSpent || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {viewCustomer.mobileNumber && (
+                  <div className="flex items-center gap-2.5 text-xs text-gray-500 bg-gray-50/80 rounded-lg px-3 py-2">
+                    <span className="text-base">&#128222;</span> {viewCustomer.mobileNumber}
+                  </div>
+                )}
+                {viewCustomer.city && (
+                  <div className="flex items-center gap-2.5 text-xs text-gray-500 bg-gray-50/80 rounded-lg px-3 py-2">
+                    <span className="text-base">&#127758;</span> {viewCustomer.city}{viewCustomer.country ? `, ${viewCustomer.country}` : ""}
+                  </div>
+                )}
+                {viewCustomer.lastOrder && (
+                  <div className="flex items-center gap-2.5 text-xs text-gray-500 bg-gray-50/80 rounded-lg px-3 py-2">
+                    <Calendar size={13} /> Last order: {new Date(viewCustomer.lastOrder).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={() => handleToggleStatus(viewCustomer._id)}
+                className={`w-full py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  viewCustomer.isActive !== false
+                    ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100"
+                }`}>
+                {viewCustomer.isActive !== false ? "Deactivate Customer" : "Activate Customer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
-};
-
-export default CustomersPage;
+}
